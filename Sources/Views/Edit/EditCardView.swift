@@ -5,21 +5,100 @@ import AVFoundation
 /// View for creating or editing a flashcard (front/back, images, audio).
 struct EditCardView: View {
     @Binding var card: Card
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var imageStore: ImageStore
     @EnvironmentObject var networkMonitor: NetworkMonitor
     @StateObject private var audioManager = AudioRecorderManager()
     @State private var showImageSearch = false
-    
+    @State private var showDrawingCanvas = false
+
+    private let partOfSpeechOptions = [
+        "Noun",
+        "Verb",
+        "Adjective",
+        "Adverb",
+        "Pronoun",
+        "Preposition",
+        "Conjunction",
+        "Interjection",
+        "Article / Determiner",
+        "Phrase / Expression",
+        "Other"
+    ]
+
+    private let genderOptions = [
+        "Masculine",
+        "Feminine",
+        "Masculine & Feminine",
+        "Neutral",
+        "Invariable",
+        "Not applicable"
+    ]
+
+    private var definitionBinding: Binding<String> {
+        Binding(
+            get: { card.definition },
+            set: { newValue in
+                card.definition = newValue
+                card.back = newValue
+            }
+        )
+    }
+
+    private var notesBinding: Binding<String> {
+        Binding(
+            get: { card.notes ?? "" },
+            set: { newValue in
+                card.notes = newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : newValue
+            }
+        )
+    }
+
+    private var isSaveDisabled: Bool {
+        card.front.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || card.definition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || card.exampleSentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         Form {
             Section(header: Text("Front")) {
                 TextField("Front Text", text: $card.front)
             }
-            Section(header: Text("Back")) {
-                TextField("Back Text", text: $card.back)
+
+            Section(header: Text("Definition")) {
+                multilineField(text: definitionBinding, placeholder: "Definition")
             }
+
+            Section(header: Text("Example Sentence")) {
+                multilineField(text: $card.exampleSentence, placeholder: "Example Sentence")
+            }
+
+            Section(header: Text("Part of Speech")) {
+                Picker("Part of Speech", selection: $card.partOfSpeech) {
+                    Text("None").tag(String?.none)
+                    ForEach(partOfSpeechOptions, id: \.self) { option in
+                        Text(option).tag(Optional(option))
+                    }
+                }
+            }
+
+            if card.partOfSpeech == "Noun" {
+                Section(header: Text("Gender")) {
+                    Picker("Gender", selection: $card.gender) {
+                        Text("None").tag(String?.none)
+                        ForEach(genderOptions, id: \.self) { option in
+                            Text(option).tag(Optional(option))
+                        }
+                    }
+                }
+            }
+
+            Section(header: Text("Notes")) {
+                multilineField(text: notesBinding, placeholder: "Notes")
+            }
+
             Section(header: Text("Images")) {
-                // Display existing images
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
                         ForEach(card.imageAttachments) { attachment in
@@ -32,7 +111,6 @@ struct EditCardView: View {
                         }
                     }
                 }
-                // Buttons to add image
                 HStack {
                     Button {
                         showImageSearch = true
@@ -40,9 +118,17 @@ struct EditCardView: View {
                         Label("Add from Unsplash", systemImage: "photo.on.rectangle.angled")
                     }
                     .disabled(!networkMonitor.isConnected || KeychainHelper.load(key: "UnsplashAPIKey") == nil)
+
+                    Button {
+                        showDrawingCanvas = true
+                    } label: {
+                        Label("Add Drawing", systemImage: "pencil.and.outline")
+                    }
+
                     Spacer()
                 }
             }
+
             Section(header: Text("Audio")) {
                 if let existingAudio = card.audioFileName {
                     HStack {
@@ -82,6 +168,12 @@ struct EditCardView: View {
             }
         }
         .navigationTitle("Edit Card")
+        .interactiveDismissDisabled(isSaveDisabled)
+        .onChange(of: card.partOfSpeech) { newValue in
+            if newValue != "Noun" {
+                card.gender = nil
+            }
+        }
         .sheet(isPresented: $showImageSearch) {
             ImageSearchView { image, photo in
                 showImageSearch = false
@@ -93,6 +185,37 @@ struct EditCardView: View {
                     card.imageAttachments.append(attachment)
                 }
             }
+        }
+        .sheet(isPresented: $showDrawingCanvas) {
+            NavigationStack {
+                DrawingCanvasView { image in
+                    if let savedName = imageStore.save(image: image) {
+                        let attachment = ImageAttachment(fileName: savedName)
+                        card.imageAttachments.append(attachment)
+                    }
+                }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    dismiss()
+                }
+                .disabled(isSaveDisabled)
+            }
+        }
+    }
+
+    private func multilineField(text: Binding<String>, placeholder: String) -> some View {
+        ZStack(alignment: .topLeading) {
+            if text.wrappedValue.isEmpty {
+                Text(placeholder)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 8)
+                    .padding(.leading, 5)
+            }
+            TextEditor(text: text)
+                .frame(minHeight: 90)
         }
     }
 }

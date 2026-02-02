@@ -35,7 +35,12 @@ struct WordDetailView: View {
             } else {
                 Button("Add to Flashcards") {
                     // Create a new flashcard for this word
-                    var newCard = Card(front: entry.lemma, back: entry.definition)
+                    var newCard = Card(
+                        front: entry.lemma,
+                        back: entry.definition,
+                        definition: entry.definition,
+                        exampleSentence: entry.sample
+                    )
                     newCard = Scheduler.ensureNewCardScheduled(newCard)
                     cardRepository.upsert(newCard)
                 }

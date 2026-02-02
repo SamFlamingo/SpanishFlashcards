@@ -5,6 +5,11 @@ struct Card: Identifiable, Codable {
     let id: UUID
     var front: String
     var back: String
+    var definition: String
+    var exampleSentence: String
+    var partOfSpeech: String? = nil
+    var gender: String? = nil
+    var notes: String? = nil
     var imageAttachments: [ImageAttachment] = []
     var audioFileName: String? = nil
     // Spaced repetition fields:
@@ -18,14 +23,22 @@ struct Card: Identifiable, Codable {
         case new, learning, review, relearning
     }
     enum CodingKeys: String, CodingKey {
-        case id, front, back, imageAttachments, audioFileName, status, easeFactor, interval, due, lapses
+        case id, front, back, definition, exampleSentence, partOfSpeech, gender, notes
+        case imageAttachments, audioFileName, status, easeFactor, interval, due, lapses
     }
 
     init(id: UUID = UUID(), front: String, back: String,
+         definition: String = "", exampleSentence: String = "",
+         partOfSpeech: String? = nil, gender: String? = nil, notes: String? = nil,
          imageAttachments: [ImageAttachment] = [], audioFileName: String? = nil) {
         self.id = id
         self.front = front
         self.back = back
+        self.definition = definition
+        self.exampleSentence = exampleSentence
+        self.partOfSpeech = partOfSpeech
+        self.gender = gender
+        self.notes = notes
         self.imageAttachments = imageAttachments
         self.audioFileName = audioFileName
         // status, easeFactor, etc. have default values
@@ -37,6 +50,11 @@ struct Card: Identifiable, Codable {
         id = try container.decode(UUID.self, forKey: .id)
         front = try container.decode(String.self, forKey: .front)
         back = try container.decode(String.self, forKey: .back)
+        definition = try container.decodeIfPresent(String.self, forKey: .definition) ?? back
+        exampleSentence = try container.decodeIfPresent(String.self, forKey: .exampleSentence) ?? ""
+        partOfSpeech = try container.decodeIfPresent(String.self, forKey: .partOfSpeech)
+        gender = try container.decodeIfPresent(String.self, forKey: .gender)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes)
         imageAttachments = try container.decodeIfPresent([ImageAttachment].self, forKey: .imageAttachments) ?? []
         audioFileName = try container.decodeIfPresent(String.self, forKey: .audioFileName)
         status = try container.decodeIfPresent(CardStatus.self, forKey: .status) ?? .new
@@ -52,6 +70,11 @@ struct Card: Identifiable, Codable {
         try container.encode(id, forKey: .id)
         try container.encode(front, forKey: .front)
         try container.encode(back, forKey: .back)
+        try container.encode(definition, forKey: .definition)
+        try container.encode(exampleSentence, forKey: .exampleSentence)
+        try container.encodeIfPresent(partOfSpeech, forKey: .partOfSpeech)
+        try container.encodeIfPresent(gender, forKey: .gender)
+        try container.encodeIfPresent(notes, forKey: .notes)
         if !imageAttachments.isEmpty {
             try container.encode(imageAttachments, forKey: .imageAttachments)
         }
