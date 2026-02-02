@@ -3,7 +3,15 @@ import Foundation
 /// Tracks daily review progress (count of cards reviewed per day).
 @MainActor
 class ProgressStore: ObservableObject {
-    @Published var dailyLimit: Int
+    @Published var dailyLimit: Int {
+        didSet {
+            if dailyLimit < 1 {
+                dailyLimit = 1
+                return
+            }
+            userDefaults.set(dailyLimit, forKey: dailyLimitKey)
+        }
+    }
     @Published private(set) var todayReviewedCount: Int = 0
     
     private let userDefaults: UserDefaults
