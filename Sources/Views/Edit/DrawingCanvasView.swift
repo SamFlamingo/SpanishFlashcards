@@ -6,6 +6,7 @@ struct DrawingCanvasView: View {
     @State private var canvasView = PKCanvasView()
 
     var onSave: (UIImage) -> Void
+    var onCancel: () -> Void
 
     var body: some View {
         DrawingCanvasRepresentable(canvasView: $canvasView)
@@ -14,17 +15,30 @@ struct DrawingCanvasView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        onCancel()
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let image = canvasView.drawing.image(from: canvasView.bounds, scale: UIScreen.main.scale)
-                        onSave(image)
+                        onSave(exportImage())
                         dismiss()
                     }
                 }
             }
+    }
+
+    private func exportImage() -> UIImage {
+        let bounds = canvasView.bounds
+        let size = bounds.size == .zero ? CGSize(width: 1, height: 1) : bounds.size
+        let drawingRect = CGRect(origin: .zero, size: size)
+        let drawingImage = canvasView.drawing.image(from: drawingRect, scale: UIScreen.main.scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            UIColor.white.setFill()
+            context.fill(drawingRect)
+            drawingImage.draw(in: drawingRect)
+        }
     }
 }
 
@@ -33,14 +47,10 @@ struct DrawingCanvasRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PKCanvasView {
         canvasView.drawingPolicy = .anyInput
-        canvasView.backgroundColor = .secondarySystemBackground
+        canvasView.backgroundColor = .white
         canvasView.isOpaque = true
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            let toolPicker = PKToolPicker.shared(for: windowScene)
-            toolPicker?.setVisible(true, forFirstResponder: canvasView)
-            toolPicker?.addObserver(canvasView)
-            canvasView.becomeFirstResponder()
-        }
+        canvasView.tool = PKInkingTool(.pen, color: .black, width: 5)
+        canvasView.becomeFirstResponder()
         return canvasView
     }
 
