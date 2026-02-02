@@ -17,7 +17,7 @@ struct FlashcardPromptView: View {
                 .padding()
 
             if isRevealed {
-                Text(card.back.isEmpty ? "—" : card.back)
+                Text(card.definition.isEmpty ? (card.back.isEmpty ? "—" : card.back) : card.definition)
                     .font(.title2)
                     .padding()
 
@@ -50,4 +50,3 @@ struct FlashcardPromptView: View {
         }
     }
 }
-
