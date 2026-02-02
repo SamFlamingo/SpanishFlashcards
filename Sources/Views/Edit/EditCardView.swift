@@ -111,21 +111,27 @@ struct EditCardView: View {
                         }
                     }
                 }
-                HStack {
+                VStack(alignment: .leading, spacing: 8) {
                     Button {
                         showImageSearch = true
                     } label: {
-                        Label("Add from Unsplash", systemImage: "photo.on.rectangle.angled")
+                        HStack {
+                            Label("Add from Unsplash", systemImage: "photo.on.rectangle.angled")
+                            Spacer()
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!networkMonitor.isConnected || KeychainHelper.load(key: "UnsplashAPIKey") == nil)
 
                     Button {
                         showDrawingCanvas = true
                     } label: {
-                        Label("Add Drawing", systemImage: "pencil.and.outline")
+                        HStack {
+                            Label("Add Drawing", systemImage: "pencil.and.outline")
+                            Spacer()
+                        }
                     }
-
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
 
