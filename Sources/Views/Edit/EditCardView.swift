@@ -7,9 +7,8 @@ struct EditCardView: View {
     @Binding var card: Card
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var imageStore: ImageStore
-    @EnvironmentObject var networkMonitor: NetworkMonitor
     @StateObject private var audioManager = AudioRecorderManager()
-    @State private var showImageSearch = false
+    @State private var showUnsplash = false
     @State private var showDrawingCanvas = false
     @State private var isLookupPresented = false
     @State private var isLookupInProgress = false
@@ -134,28 +133,22 @@ struct EditCardView: View {
                         }
                     }
                 }
-                Button {
-                    showImageSearch = true
-                } label: {
-                    HStack {
-                        Label("Add from Unsplash", systemImage: "photo.on.rectangle.angled")
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(!networkMonitor.isConnected || KeychainHelper.load(key: "UnsplashAPIKey") == nil)
 
                 Button {
+                    print("📸 Unsplash tapped")
+                    showUnsplash = true
+                } label: {
+                    Label("Add from Unsplash", systemImage: "photo")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    print("✏️ Drawing tapped")
                     showDrawingCanvas = true
                 } label: {
-                    HStack {
-                        Label("Add Drawing", systemImage: "pencil.and.outline")
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
-                    }
+                    Label("Add Drawing", systemImage: "pencil.tip")
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }
@@ -205,9 +198,9 @@ struct EditCardView: View {
                 card.gender = nil
             }
         }
-        .sheet(isPresented: $showImageSearch) {
+        .sheet(isPresented: $showUnsplash) {
             ImageSearchView { image, photo in
-                showImageSearch = false
+                showUnsplash = false
                 if let savedName = imageStore.save(image: image) {
                     let attachment = ImageAttachment(fileName: savedName,
                                                      unsplashId: photo.id,
