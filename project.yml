@@ -12,15 +12,18 @@ targets:
 
     sources:
       - path: Sources
+      - path: Resources
+        excludes:
+          - "**/*"
 
     resources:
       - path: Resources
         includes:
-          - "*.csv"
-          - "*.plist"
-          - "*.xcassets"
-          - "*.storyboard"
-          - "*.xib"
+          - "**/*.csv"
+          - "**/*.plist"
+          - "**/*.xcassets"
+          - "**/*.storyboard"
+          - "**/*.xib"
 
     info:
       path: Resources/Info.plist
@@ -31,4 +34,3 @@ targets:
           - UIInterfaceOrientationPortrait
         NSMicrophoneUsageDescription: >
           This app requires access to the microphone to record audio for flashcards.
-
