@@ -4,27 +4,10 @@ protocol DictionaryService {
     func lookup(word: String, language: Language) async throws -> DictionaryEntry?
 }
 
-enum DictionaryLookupError: LocalizedError {
-    case invalidURL(String)
-    case httpError(status: Int)
-    case emptyResponse
+enum DictionaryLookupError: Error {
+    case http(Int)
     case decoding(Error)
-    case transport(Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL(let word):
-            return "Invalid URL for lookup word: \(word)"
-        case .httpError(let status):
-            return "HTTP error: \(status)"
-        case .emptyResponse:
-            return "Empty response body"
-        case .decoding(let error):
-            return "Decoding failure: \(error.localizedDescription)"
-        case .transport(let error):
-            return "Network transport error: \(error.localizedDescription)"
-        }
-    }
+    case network(Error)
 }
 
 struct DictionaryEntry {
