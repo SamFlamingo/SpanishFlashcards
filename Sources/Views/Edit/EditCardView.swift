@@ -134,28 +134,30 @@ struct EditCardView: View {
                         }
                     }
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Button {
-                        showImageSearch = true
-                    } label: {
-                        HStack {
-                            Label("Add from Unsplash", systemImage: "photo.on.rectangle.angled")
-                            Spacer()
-                        }
+                Button {
+                    showImageSearch = true
+                } label: {
+                    HStack {
+                        Label("Add from Unsplash", systemImage: "photo.on.rectangle.angled")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .disabled(!networkMonitor.isConnected || KeychainHelper.load(key: "UnsplashAPIKey") == nil)
-
-                    Button {
-                        showDrawingCanvas = true
-                    } label: {
-                        HStack {
-                            Label("Add Drawing", systemImage: "pencil.and.outline")
-                            Spacer()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .buttonStyle(.plain)
+                .disabled(!networkMonitor.isConnected || KeychainHelper.load(key: "UnsplashAPIKey") == nil)
+
+                Button {
+                    showDrawingCanvas = true
+                } label: {
+                    HStack {
+                        Label("Add Drawing", systemImage: "pencil.and.outline")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
             }
 
             Section(header: Text("Audio")) {
