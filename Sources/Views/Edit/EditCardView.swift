@@ -249,11 +249,6 @@ struct EditCardView: View {
     }
 
     private func lookupDefinition() {
-        guard networkMonitor.isConnected else {
-            lookupMessage = "Dictionary lookup unavailable. Try again later."
-            return
-        }
-
         let term = card.front.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else {
             return
