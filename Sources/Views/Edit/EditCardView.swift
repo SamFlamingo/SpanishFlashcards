@@ -11,6 +11,12 @@ struct EditCardView: View {
     @StateObject private var audioManager = AudioRecorderManager()
     @State private var showImageSearch = false
     @State private var showDrawingCanvas = false
+    @State private var isLookupPresented = false
+    @State private var isLookupInProgress = false
+    @State private var lookupEntry: DictionaryEntry?
+    @State private var lookupMessage: String?
+
+    private let dictionaryService: any DictionaryService = WiktionaryDictionaryService()
 
     private let partOfSpeechOptions = [
         "Noun",
@@ -68,6 +74,23 @@ struct EditCardView: View {
 
             Section(header: Text("Definition")) {
                 multilineField(text: definitionBinding, placeholder: "Definition")
+                Button {
+                    lookupDefinition()
+                } label: {
+                    HStack {
+                        if isLookupInProgress {
+                            ProgressView()
+                        }
+                        Text("Look up definition")
+                    }
+                }
+                .disabled(isLookupInProgress || card.front.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                if let lookupMessage {
+                    Text(lookupMessage)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
             }
 
             Section(header: Text("Example Sentence")) {
@@ -186,6 +209,14 @@ struct EditCardView: View {
                 }
             }
         }
+        .sheet(isPresented: $isLookupPresented) {
+            if let entry = lookupEntry {
+                DictionaryLookupView(entry: entry)
+            } else {
+                Text("No definition available.")
+                    .presentationDetents([.medium])
+            }
+        }
         .fullScreenCover(isPresented: $showDrawingCanvas) {
             NavigationStack {
                 DrawingCanvasView(
@@ -211,6 +242,35 @@ struct EditCardView: View {
         }
     }
 
+    private func lookupDefinition() {
+        guard networkMonitor.isConnected else {
+            lookupMessage = "Dictionary lookup unavailable. Try again later."
+            return
+        }
+
+        let term = card.front.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else {
+            return
+        }
+
+        isLookupInProgress = true
+        lookupMessage = nil
+        Task {
+            defer { isLookupInProgress = false }
+            do {
+                let entry = try await dictionaryService.lookup(word: term, language: .spanish)
+                if let entry {
+                    lookupEntry = entry
+                    isLookupPresented = true
+                } else {
+                    lookupMessage = "Dictionary lookup unavailable. Try again later."
+                }
+            } catch {
+                lookupMessage = "Dictionary lookup unavailable. Try again later."
+            }
+        }
+    }
+
     private func multilineField(text: Binding<String>, placeholder: String) -> some View {
         ZStack(alignment: .topLeading) {
             if text.wrappedValue.isEmpty {
@@ -221,6 +281,51 @@ struct EditCardView: View {
             }
             TextEditor(text: text)
                 .frame(minHeight: 90)
+        }
+    }
+}
+
+private struct DictionaryLookupView: View {
+    let entry: DictionaryEntry
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(entry.lemma)
+                        .font(.title2)
+                    if let partOfSpeech = entry.partOfSpeech {
+                        Text(partOfSpeech)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section(header: Text("Definitions")) {
+                    if entry.translations.isEmpty {
+                        Text("No definitions available.")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(entry.translations, id: \.self) { definition in
+                            Text(definition)
+                        }
+                    }
+                }
+
+                Section {
+                    Text("Reference only. Write your own definition and example sentence.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Dictionary Lookup")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }
