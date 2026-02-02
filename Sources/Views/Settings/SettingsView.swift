@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var lexiconRepository: LexiconRepository
     @EnvironmentObject var cardRepository: CardRepository
+    @EnvironmentObject var progressStore: ProgressStore
     @State private var apiKey: String = KeychainHelper.load(key: "UnsplashAPIKey") ?? ""
     @State private var showKeySaved = false
     @AppStorage("cardSeedCount") private var cardSeedCount = 100
@@ -66,6 +67,9 @@ struct SettingsView: View {
 
                 Section {
                     Stepper("Cards to seed: \(cardSeedCount)", value: $cardSeedCount, in: 1...1000)
+                    Stepper(value: $progressStore.dailyLimit, in: 1...500) {
+                        Text("Daily review limit: \(progressStore.dailyLimit)")
+                    }
                 } header: {
                     Text("Review Settings")
                 }
@@ -79,4 +83,3 @@ struct SettingsView: View {
         }
     }
 }
-
