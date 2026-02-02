@@ -18,9 +18,14 @@ struct WiktionaryDictionaryService: DictionaryService {
         }
 
         let encodedWord = trimmedWord.lowercased().addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? trimmedWord
-        guard let url = URL(string: "https://api.dictionaryapi.dev/api/v2/entries/es/\(encodedWord)") else {
-            throw DictionaryLookupError.invalidURL
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.dictionaryapi.dev"
+        components.path = "/api/v2/entries/es/\(encodedWord)"
+        guard let url = components.url else {
+            throw DictionaryLookupError.invalidURL(trimmedWord)
         }
+        debugLog("Dictionary lookup URL: \(url.absoluteString)")
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
@@ -29,48 +34,84 @@ struct WiktionaryDictionaryService: DictionaryService {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
-            throw DictionaryLookupError.networkFailure
+            debugLog("Dictionary lookup transport error: \(error.localizedDescription)")
+            throw DictionaryLookupError.transport(error)
         }
 
-        if let httpResponse = response as? HTTPURLResponse {
-            if httpResponse.statusCode == 404 {
-                return nil
-            }
-            if httpResponse.statusCode >= 400 {
-                throw DictionaryLookupError.networkFailure
-            }
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw DictionaryLookupError.httpError(status: -1)
+        }
+        debugLog("Dictionary lookup HTTP status: \(httpResponse.statusCode)")
+        debugLogResponseBodySnippet(data: data)
+
+        if httpResponse.statusCode == 404 {
+            return nil
+        }
+        if httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
+            throw DictionaryLookupError.httpError(status: httpResponse.statusCode)
+        }
+        if data.isEmpty {
+            throw DictionaryLookupError.emptyResponse
         }
 
-        let entries: [WiktionaryResponse]
+        let entries: [DictionaryAPIRoot]
         do {
-            entries = try JSONDecoder().decode([WiktionaryResponse].self, from: data)
+            entries = try JSONDecoder().decode([DictionaryAPIRoot].self, from: data)
         } catch {
-            throw DictionaryLookupError.decodingFailure
+            debugLog("Dictionary lookup decoding error: \(error.localizedDescription)")
+            throw DictionaryLookupError.decoding(error)
         }
         guard let entry = entries.first else {
             return nil
         }
 
-        let meaning = entry.meanings.first
+        let meaning = entry.meanings?.first
+        let partOfSpeech = meaning?.partOfSpeech
+        let definition = meaning?.definitions?.first?.definition
+        guard partOfSpeech != nil || definition != nil else {
+            return nil
+        }
+
         return DictionaryEntry(
-            lemma: entry.word,
-            partOfSpeech: meaning?.partOfSpeech,
+            lemma: entry.word ?? trimmedWord,
+            partOfSpeech: partOfSpeech,
             translations: [],
-            shortDefinition: meaning?.definitions.first?.definition
+            shortDefinition: definition
         )
     }
 }
 
-private struct WiktionaryResponse: Decodable {
-    let word: String
-    let meanings: [WiktionaryMeaning]
+private struct DictionaryAPIRoot: Decodable {
+    let word: String?
+    let meanings: [DictionaryMeaning]?
 }
 
-private struct WiktionaryMeaning: Decodable {
+private struct DictionaryMeaning: Decodable {
     let partOfSpeech: String?
-    let definitions: [WiktionaryDefinition]
+    let definitions: [DictionaryDefinition]?
 }
 
-private struct WiktionaryDefinition: Decodable {
-    let definition: String
+private struct DictionaryDefinition: Decodable {
+    let definition: String?
+}
+
+private func debugLog(_ message: String) {
+    #if DEBUG
+    print("[DictionaryLookup] \(message)")
+    #endif
+}
+
+private func debugLogResponseBodySnippet(data: Data) {
+    #if DEBUG
+    guard !data.isEmpty else {
+        print("[DictionaryLookup] Response body: <empty>")
+        return
+    }
+    if let bodyString = String(data: data, encoding: .utf8) {
+        let snippet = bodyString.prefix(200)
+        print("[DictionaryLookup] Response body (first 200 chars): \(snippet)")
+    } else {
+        print("[DictionaryLookup] Response body: <non-utf8>")
+    }
+    #endif
 }
