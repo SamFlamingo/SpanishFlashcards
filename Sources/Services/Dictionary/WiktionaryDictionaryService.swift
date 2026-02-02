@@ -18,32 +18,50 @@ struct WiktionaryDictionaryService: DictionaryService {
         }
 
         let encodedWord = trimmedWord.lowercased().addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? trimmedWord
-        let url = URL(string: "https://api.dictionaryapi.dev/api/v2/entries/es/\(encodedWord)")!
+        guard let url = URL(string: "https://api.dictionaryapi.dev/api/v2/entries/es/\(encodedWord)") else {
+            throw DictionaryLookupError.invalidURL
+        }
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
-        let (data, response) = try await session.data(for: request)
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 404 {
-            return nil
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw DictionaryLookupError.networkFailure
         }
 
-        let entries = try JSONDecoder().decode([WiktionaryEntry].self, from: data)
+        if let httpResponse = response as? HTTPURLResponse {
+            if httpResponse.statusCode == 404 {
+                return nil
+            }
+            if httpResponse.statusCode >= 400 {
+                throw DictionaryLookupError.networkFailure
+            }
+        }
+
+        let entries: [WiktionaryResponse]
+        do {
+            entries = try JSONDecoder().decode([WiktionaryResponse].self, from: data)
+        } catch {
+            throw DictionaryLookupError.decodingFailure
+        }
         guard let entry = entries.first else {
             return nil
         }
 
         let meaning = entry.meanings.first
-        let definitions = meaning?.definitions.map { $0.definition } ?? []
         return DictionaryEntry(
             lemma: entry.word,
             partOfSpeech: meaning?.partOfSpeech,
-            translations: definitions,
-            shortDefinition: definitions.first
+            translations: [],
+            shortDefinition: meaning?.definitions.first?.definition
         )
     }
 }
 
-private struct WiktionaryEntry: Decodable {
+private struct WiktionaryResponse: Decodable {
     let word: String
     let meanings: [WiktionaryMeaning]
 }
