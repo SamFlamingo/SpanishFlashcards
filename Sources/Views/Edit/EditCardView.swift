@@ -186,14 +186,19 @@ struct EditCardView: View {
                 }
             }
         }
-        .sheet(isPresented: $showDrawingCanvas) {
+        .fullScreenCover(isPresented: $showDrawingCanvas) {
             NavigationStack {
-                DrawingCanvasView { image in
-                    if let savedName = imageStore.save(image: image) {
-                        let attachment = ImageAttachment(fileName: savedName)
-                        card.imageAttachments.append(attachment)
+                DrawingCanvasView(
+                    onSave: { image in
+                        if let savedName = imageStore.save(image: image) {
+                            let attachment = ImageAttachment(fileName: savedName)
+                            card.imageAttachments.append(attachment)
+                        }
+                    },
+                    onCancel: {
+                        showDrawingCanvas = false
                     }
-                }
+                )
             }
         }
         .toolbar {
