@@ -301,9 +301,15 @@ private struct DictionaryLookupView: View {
                     }
                 }
 
-                Section(header: Text("Definitions")) {
+                if let shortDefinition = entry.shortDefinition {
+                    Section(header: Text("Short Definition")) {
+                        Text(shortDefinition)
+                    }
+                }
+
+                Section(header: Text("Translations")) {
                     if entry.translations.isEmpty {
-                        Text("No definitions available.")
+                        Text("No translations available.")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(entry.translations, id: \.self) { definition in
